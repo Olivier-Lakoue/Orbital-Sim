@@ -2,25 +2,11 @@ import time as t
 import math
 
 from astropy.time import Time
-from jplephem.spk import SPK
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
 import numpy as np
-
-# Open planatary position files
-kernel = SPK.open('de430.bsp')
-
-# Constants
-
-# Delta time for simulations (in days)
-del_t = np.longdouble(1.0) / (24.0 * 60.0 * 60.0)
-# Mass of earth
-earth_mass = np.longdouble(5972198600000000000000000)
-# Mass of the moon
-moon_mass = np.longdouble(7.34767309 * 10**22)
-# Moon pos update rate
-moon_t = np.longdouble(1.0) / (24.0)
-
+# Import Objects
+from Objects import Craft
+import moon
+import earth
 
 # Generate output for plotting a sphere
 def drawSphere(xCenter, yCenter, zCenter, r):
@@ -35,146 +21,86 @@ def drawSphere(xCenter, yCenter, zCenter, r):
 	z = r * z + zCenter
 	return (x, y, z)
 
+def plot(ship,planets):
+	"""3d plots earth/moon/ship interaction"""
+	import matplotlib.pyplot as plt
+	from mpl_toolkits.mplot3d import Axes3D
+	# Initilize plot
+	fig = plt.figure()
+	ax = fig.add_subplot(111, projection='3d')
+	ax.set_xlabel('X Km')
+	ax.set_ylabel('Y Km')
+	ax.set_zlabel('Z Km')
+	ax.set_xlim3d(-500000, 500000)
+	ax.set_ylim3d(-500000, 500000)
+	ax.set_zlim3d(-500000, 500000)
+	
+	ax.plot(xs=ship.hist[0][0::10],
+			ys=ship.hist[1][0::10],
+			zs=ship.hist[2][0::10],
+			zdir='z', label='ys=0, zdir=z')
+	
+	# Plot planet trajectory
+	for planet in planets:
+		ax.plot(xs=moon.hist[0],
+				ys=moon.hist[1],
+				zs=moon.hist[2],
+				zdir='z', label='ys=0, zdir=z')
+	
+	# Plot Earth (plot is moon position relative to earth)
+	# also plotting to scale
+	(xs, ys, zs) = drawSphere(0, 0, 0, 6367.4447)
+	ax.plot_wireframe(xs, ys, zs, color="r")
+	
+	plt.show()
 
-class Craft(object):
-	def __init__(self, delt_t, x=0.0, y=0.0, z=0.0,
-				v_x=0.0, v_y=0.0, v_z=0.0, mass=0):
-		# Pos is in km
-		self.pos = np.array([np.longdouble(x),
-							np.longdouble(y),
-							np.longdouble(z)])
-		# Vol is in km/s
-		self.vol = np.array([np.longdouble(v_x),
-							np.longdouble(v_y),
-							np.longdouble(v_z)])
-		# Mass is in kg
-		self.mass = mass
-		# Delta_t is in days
-		self.del_t = np.longdouble(delt_t) * 86400
+def sim(startTime, endTime, step, ship, planets):
+	"""Runs orbital simulation given ship and planet objects as well as start/stop times"""
 
-		# Initilize non input vars
-		# Initilize history of positions
-		self.hist = [[np.longdouble(x)],
-					[np.longdouble(y)],
-					[np.longdouble(z)]]
-		# Initilize force array
-		self.f = np.array([np.longdouble(0),
-						np.longdouble(0),
-						np.longdouble(0)])
-		# Initilize constants
-		# Gravitational constant (6.674*10-11 N*(m/kg)2)
-		self.G_const = np.longdouble(0.00000000006674)
+	# Caculate moon planet update rate (1/10th as often as the craft)
+	plan_step = int(math.ceil(((endTime - startTime) / step)/100))
 
-	def force_g(self, body_mass, body_x=0.0, body_y=0.0, body_z=0.0):
-		# Caculate x, y, z distances
-		xdist = (self.pos[0] - body_x)
-		ydist = (self.pos[1] - body_y)
-		zdist = (self.pos[2] - body_z)
-		# Caculate vector distance
-		d = math.sqrt((xdist**2) + (ydist**2) + (zdist**2)) * 1000
-		# Caculate comman force of gravity
-		g_com = ((self.G_const * body_mass * self.mass) / (d**3))
+	# Initilize positions of planets
+	for planet in planets:
+				planet.getRelPos(startTime)
+				planet.log()
 
-		# Update forces array
-		self.f -= np.array([g_com * (xdist * 1000),
-							g_com * (ydist * 1000),
-							g_com * (zdist * 1000)])
+	for i, time in enumerate(np.arange(startTime, endTime, step)):
+		# Every plan_step update the position estmation
+		if (i % plan_step == 0):
+			for planet in planets:
+				planet.getRelPos(time)
+				planet.log()
 
-	# Function to step simulation based on force caculations
-	def update(self):
-		# Step velocity
-		self.vol += np.array([(((self.f[0] / self.mass) * self.del_t)) / 1000,
-							(((self.f[1] / self.mass) * self.del_t)) / 1000,
-							(((self.f[2] / self.mass) * self.del_t)) / 1000])
-		# Step position
-		self.pos += np.array([(self.del_t * self.vol[0]),
-							(self.del_t * self.vol[1]),
-							(self.del_t * self.vol[2])])
-		# Reset force profile
-		self.f = np.array([np.longdouble(0),
-						np.longdouble(0),
-						np.longdouble(0)])
+		# Update craft_vol
+		for planet in planets:
+			ship.force_g(planet.mass, planet.pos[0], planet.pos[1], planet.pos[2])
+		ship.update()
 
-	def dist(self, body_x=0.0, body_y=0.0, body_z=0.0):
-		return math.sqrt(((self.pos[0] - body_x)**2) +
-						((self.pos[1] - body_y)**2) +
-						((self.pos[2] - body_z)**2))
+		# Log the position of the ship every 1000 steps
+		if (i % 1000) == 0:
+			# Append the position to the lists
+			ship.log()
 
-	def log(self):
-		self.hist[0].append(self.pos[0])
-		self.hist[1].append(self.pos[1])
-		self.hist[2].append(self.pos[2])
+		# Print status update every 100,000 steps
+		if (i % 100000) == 0:
+			print end_time.jd - time
+			print "Dist:", ship.dist()
 
+if __name__ == "__main__":
 
-# Initilize plot
-fig = plt.figure()
-ax = fig.add_subplot(111, projection='3d')
-ax.set_xlabel('X Km')
-ax.set_ylabel('Y Km')
-ax.set_zlabel('Z Km')
-ax.set_xlim3d(-500000, 500000)
-ax.set_ylim3d(-500000, 500000)
-ax.set_zlim3d(-500000, 500000)
+	# Delta time for simulations (in days)
+	del_t = np.longdouble(1.0) / (24.0 * 60.0 * 60.0)
 
-ship = Craft(del_t, x=35786, y=1, z=1, v_x=0, v_y=4.5, v_z=0, mass=12)
-# Initilize pos arrays [[x],[y],[z]] (km)
-moon_pos = [[], [], []]
+	ship = Craft(del_t, x=35786, y=1, z=1, v_x=0, v_y=4.5, v_z=0, mass=12)
+	planets = [earth,moon]
 
-# Initilize simulation time
-start_time = Time('2015-09-10T00:00:00.123456789')
-end_time = Time('2016-09-10T00:00:00.123456789')
+	# Initilize simulation time
+	start_time = Time('2015-09-01T00:00:00.123456789')
+	end_time = Time('2015-09-10T00:00:00.123456789')
 
-# Initilize start date/time (Julian)
-time = start_time.jd
-
-# Caculate moon update rate
-moon_del_t = int(math.ceil((((end_time.jd - start_time.jd) / del_t) /
-				((end_time.jd - start_time.jd) / moon_t)) / 10.0)) * 10
-
-# Run sim
-i = 0
-now = t.time()
-print time
-moon_curr_pos = kernel[3, 301].compute(time) - kernel[3, 399].compute(time)
-print moon_del_t
-while (time < end_time.jd):
-	if (i % moon_del_t == 0):
-		# Caculate final position (moon-earth barycentere)
-		moon_curr_pos = kernel[3, 301].compute(time) - kernel[3, 399].compute(time)
-		moon_pos[0].append(moon_curr_pos[0])
-		moon_pos[1].append(moon_curr_pos[1])
-		moon_pos[2].append(moon_curr_pos[2])
-	# Update craft_vol
-	ship.force_g(earth_mass)
-	ship.force_g(moon_mass, moon_curr_pos[0], moon_curr_pos[1], moon_curr_pos[2])
-	ship.update()
-
-	if (i % 1000) == 0:
-		# Append the position to the lists
-		ship.log()
-
-	if (i % 100000) == 0:
-		print end_time.jd - time
-		print "Dist:", ship.dist()
-	i += 1
-	time += del_t
-print ship.hist[0][-1], ship.hist[1][-1], ship.hist[2][-1]
-print ((end_time.jd - start_time.jd) / del_t) / (t.time() - now)
-
-ax.plot(xs=ship.hist[0][0::10],
-		ys=ship.hist[1][0::10],
-		zs=ship.hist[2][0::10],
-		zdir='z', label='ys=0, zdir=z')
-
-# Plot moon trajectory
-ax.plot(xs=moon_pos[0],
-		ys=moon_pos[1],
-		zs=moon_pos[2],
-		zdir='z', label='ys=0, zdir=z')
-
-# Plot Earth (plot is moon position relative to earth)
-# also plotting to scale
-(xs, ys, zs) = drawSphere(0, 0, 0, 6367.4447)
-ax.plot_wireframe(xs, ys, zs, color="r")
-
-plt.show()
+	# Initilize start date/time (Julian)
+	time = start_time.jd
+	
+	sim(start_time.jd, end_time.jd, del_t, ship, planets)
+	plot(ship,[moon])
