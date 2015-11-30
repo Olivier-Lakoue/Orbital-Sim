@@ -1,8 +1,12 @@
 import time as t
 import math
+import sys
 
 from astropy.time import Time
 import numpy as np
+
+#Custum objects live in sub directory
+sys.path.append('./Objects/')
 # Import Objects
 from Objects import Craft
 import moon
@@ -65,6 +69,7 @@ def sim(startTime, endTime, step, ship, planets):
 				planet.getRelPos(startTime)
 				planet.log()
 
+	start = t.time()
 	for i, time in enumerate(np.arange(startTime, endTime, step)):
 		# Every plan_step update the position estmation
 		if (i % plan_step == 0):
@@ -84,8 +89,23 @@ def sim(startTime, endTime, step, ship, planets):
 
 		# Print status update every 100,000 steps
 		if (i % 100000) == 0:
-			print end_time.jd - time
-			print "Dist:", ship.dist()
+			if t.time()-start > 1:
+				print "Days remaining: {0:.2f}, ({1:.2f}% left)".format((endTime - time), ((1-((time - startTime) / (endTime - startTime)))*100))
+				# Caculate estmated time remaining
+				# Total tics
+				tot_tics = int((endTime - startTime) / step)
+				# Tics per second till now
+				tics_s = int(math.ceil(i/(t.time()-start)))
+				# Estmated remaining seconds
+				sec_rem = (tot_tics-i)/tics_s
+				m, s = divmod(sec_rem, 60)
+				h, m = divmod(m, 60)
+				print "Tics per second: {0} est time remaining: {1}:{2}:{3}".format(tics_s, h, m, s)
+	print "Total Tics per second: {0:.2f}".format(((endTime - startTime) / step)/(t.time()-start))
+	tot_s = t.time()-start
+	m, s = divmod(tot_s, 60)
+	h, m = divmod(m, 60)
+	print "Total time: {0:.0f}:{1:.0f}:{2:.0f}".format(h, m, s)
 
 if __name__ == "__main__":
 
@@ -96,8 +116,8 @@ if __name__ == "__main__":
 	planets = [earth,moon]
 
 	# Initilize simulation time
-	start_time = Time('2015-09-01T00:00:00.123456789')
-	end_time = Time('2015-09-10T00:00:00.123456789')
+	start_time = Time('2015-09-01T00:00:00')
+	end_time = Time('2016-09-01T00:00:00')
 
 	# Initilize start date/time (Julian)
 	time = start_time.jd
