@@ -100,12 +100,12 @@ def sim(startTime, endTime, step, ship, planets):
 				sec_rem = (tot_tics-i)/tics_s
 				m, s = divmod(sec_rem, 60)
 				h, m = divmod(m, 60)
-				print "Tics per second: {0} est time remaining: {1}:{2}:{3}".format(tics_s, h, m, s)
+				print "Tics per second: {0} est time remaining: {1:0>2}:{2:0>2}:{3:0>2}".format(tics_s, h, m, s)
 	print "Total Tics per second: {0:.2f}".format(((endTime - startTime) / step)/(t.time()-start))
 	tot_s = t.time()-start
 	m, s = divmod(tot_s, 60)
 	h, m = divmod(m, 60)
-	print "Total time: {0:.0f}:{1:.0f}:{2:.0f}".format(h, m, s)
+	print "Total time: {0:0>2.0f}:{1:0>2.0f}:{2:0>2.0f}".format(h, m, s)
 
 if __name__ == "__main__":
 
@@ -117,7 +117,7 @@ if __name__ == "__main__":
 
 	# Initilize simulation time
 	start_time = Time('2015-09-01T00:00:00')
-	end_time = Time('2016-09-01T00:00:00')
+	end_time = Time('2015-10-01T00:00:00')
 
 	# Initilize start date/time (Julian)
 	time = start_time.jd
