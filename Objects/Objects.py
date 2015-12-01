@@ -3,8 +3,8 @@ import numpy as np
 from jplephem.spk import SPK
 import os
 
-class Craft(object):
 
+class Craft(object):
 	def __init__(self, delt_t, x=0.0, y=0.0, z=0.0,
 				v_x=0.0, v_y=0.0, v_z=0.0, mass=0):
 		# Pos is in km
@@ -62,15 +62,16 @@ class Craft(object):
 		self.f = np.array([np.longdouble(0),
 						np.longdouble(0),
 						np.longdouble(0)])
-	
+
 	def VV_update(self):
 		"""Parameters:
 		r is a numpy array giving the current position vector
 		v is a numpy array giving the current velocity vector
 		dt is a float value giving the length of the integration time step
-		a is a function which takes x as a parameter and returns the acceleration vector as an array"""
-		r_new = r + v*dt + a(r)*dt**2/2
-		v_new = v + (a(r) + a(r_new))/2 * dt
+		a is a function which takes x as a parameter and returns
+		the acceleration vector as an array"""
+		r_new = r + v * dt + a(r) * dt**2 / 2
+		v_new = v + (a(r) + a(r_new)) / 2 * dt
 
 	def dist(self, body_x=0.0, body_y=0.0, body_z=0.0):
 		return math.sqrt(((self.pos[0] - body_x)**2) +
