@@ -5,8 +5,6 @@ import sys
 from astropy.time import Time
 import numpy as np
 
-# Custum objects live in sub directory
-sys.path.append('./Objects/')
 # Import Objects
 import Objects
 
