@@ -3,8 +3,8 @@ import numpy as np
 from jplephem.spk import SPK
 import os
 
-class Craft(object):
 
+class Craft(object):
 	def __init__(self, delt_t, x=0.0, y=0.0, z=0.0,
 				v_x=0.0, v_y=0.0, v_z=0.0, mass=0):
 		# Pos is in km
@@ -62,15 +62,16 @@ class Craft(object):
 		self.f = np.array([np.longdouble(0),
 						np.longdouble(0),
 						np.longdouble(0)])
-	
+
 	def VV_update(self):
 		"""Parameters:
 		r is a numpy array giving the current position vector
 		v is a numpy array giving the current velocity vector
 		dt is a float value giving the length of the integration time step
-		a is a function which takes x as a parameter and returns the acceleration vector as an array"""
-		r_new = r + v*dt + a(r)*dt**2/2
-		v_new = v + (a(r) + a(r_new))/2 * dt
+		a is a function which takes x as a parameter and returns
+		the acceleration vector as an array"""
+		r_new = r + v * dt + a(r) * dt**2 / 2
+		v_new = v + (a(r) + a(r_new)) / 2 * dt
 
 	def dist(self, body_x=0.0, body_y=0.0, body_z=0.0):
 		return math.sqrt(((self.pos[0] - body_x)**2) +
@@ -81,3 +82,60 @@ class Craft(object):
 		self.hist[0].append(self.pos[0])
 		self.hist[1].append(self.pos[1])
 		self.hist[2].append(self.pos[2])
+
+
+class CelestialBody:
+
+	def __init__(self, mass, position=None):
+		if not os.path.isfile('de430.bsp'):
+			raise ValueError('de430.bsp Was not found!')
+		self.kernel = SPK.open('de430.bsp')
+
+		self.mass = np.longdouble(mass)
+		self.hist = [[], [], []]
+		if position is not None:
+			self.pos = position
+		else:
+			self.pos = []
+
+	def getPos(self, time):
+		"""Returns the position relative to the solar system barycentere"""
+		return self.kernel[3, self.KERNAL_CONSTANT].compute(time)
+
+
+	def log(self):
+		"""log current position"""
+		self.hist[0].append(self.pos[0])
+		self.hist[1].append(self.pos[1])
+		self.hist[2].append(self.pos[2])
+
+class Earth(CelestialBody, object):
+
+	KERNAL_CONSTANT = 399
+
+	def __init__(self):
+		super(Earth, self).__init__(5.9721986 * 10**24)
+
+
+	def getRelPos(self, time):
+		"""Returns relitive position of the earth (which is the origin
+		in an earth moon system)"""
+
+		location = np.longdouble(0)
+		self.pos = np.array([location, location, location])
+		return self.pos
+
+
+class Moon(CelestialBody, object):
+
+	KERNAL_CONSTANT = 301
+
+	def __init__(self):
+		super(Moon, self).__init__(7.34767309 * 10**22)
+
+	def getRelPos(self, time):
+		"""Returns relitive position of the moon (relative to the earth)"""
+		self.pos = self.getPos(time) - self.kernel[3, 399].compute(time)
+		return np.array([np.longdouble(self.pos[0]),
+						 np.longdouble(self.pos[1]),
+						 np.longdouble(self.pos[2])])

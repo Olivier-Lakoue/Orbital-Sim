@@ -8,9 +8,7 @@ import numpy as np
 # Custum objects live in sub directory
 sys.path.append('./Objects/')
 # Import Objects
-from Objects import Craft
-import moon
-import earth
+import Objects
 
 
 # Generate output for plotting a sphere
@@ -122,7 +120,10 @@ if __name__ == "__main__":
 	# Delta time for simulations (in days)
 	del_t = np.longdouble(1.0) / (24.0 * 60.0 * 60.0)
 
-	ship = Craft(del_t, x=35786, y=1, z=1, v_x=0, v_y=4.5, v_z=0, mass=12)
+	# Initilize objects
+	ship = Objects.Craft(del_t, x=35786, y=1, z=1, v_x=0, v_y=4.5, v_z=0, mass=12)
+	earth = Objects.Earth()
+	moon = Objects.Moon()
 	planets = [earth, moon]
 
 	# Initilize simulation time
@@ -131,6 +132,5 @@ if __name__ == "__main__":
 
 	# Initilize start date/time (Julian)
 	time = start_time.jd
-
 	sim(start_time.jd, end_time.jd, del_t, ship, planets)
 	plot(ship, [moon])

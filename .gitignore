@@ -2,6 +2,9 @@
 __pycache__/
 *.py[cod]
 
+#JPL files
+*.bsp
+
 # C extensions
 *.so
 
