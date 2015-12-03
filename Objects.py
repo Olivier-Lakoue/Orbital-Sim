@@ -26,42 +26,33 @@ class Craft(object):
 					[np.longdouble(y)],
 					[np.longdouble(z)]]
 		# Initilize force array
-		self.f = np.array([np.longdouble(0),
-						np.longdouble(0),
-						np.longdouble(0)])
+		self.force = np.zeros(3, dtype=np.longdouble)
 		# Initilize constants
-		# Gravitational constant (6.674*10-11 N*(m/kg)2)
-		self.G_const = np.longdouble(0.00000000006674)
+		# Gravitational constant (6.67408*10-11 N*(m/kg)2)
+		self.g_const = 6.67408 * 10**-11
+		self.VELOCITY_FACTOR = self.del_t / self.mass / 1000
+		self.FORCE_FACTOR = self.g_const * self.mass / 1000000
 
-	def force_g(self, body_mass, body_x=0.0, body_y=0.0, body_z=0.0):
-		# Caculate x, y, z distances
-		xdist = (self.pos[0] - body_x)
-		ydist = (self.pos[1] - body_y)
-		zdist = (self.pos[2] - body_z)
-		# Caculate vector distance
-		d = math.sqrt((xdist**2) + (ydist**2) + (zdist**2)) * 1000
-		# Caculate comman force of gravity
-		g_com = ((self.G_const * body_mass * self.mass) / (d**3))
+	def force_g(self, body):
+		"""Updates the force the body has on this craft."""
+
+		dist = self.pos - body.pos
+		gravity_component = (self.FORCE_FACTOR * body.mass /
+							((dist[0]**2 + dist[1]**2 + dist[2]**2)**1.5))
 
 		# Update forces array
-		self.f -= np.array([g_com * (xdist * 1000),
-							g_com * (ydist * 1000),
-							g_com * (zdist * 1000)])
+		self.force -= np.dot(dist, gravity_component)
 
 	# Function to step simulation based on force caculations
 	def update(self):
+		"""Steps up simulation based on force calculations."""
 		# Step velocity
-		self.vol += np.array([(((self.f[0] / self.mass) * self.del_t)) / 1000,
-							(((self.f[1] / self.mass) * self.del_t)) / 1000,
-							(((self.f[2] / self.mass) * self.del_t)) / 1000])
+		self.vol += np.dot(self.force, self.VELOCITY_FACTOR)
 		# Step position
-		self.pos += np.array([(self.del_t * self.vol[0]),
-							(self.del_t * self.vol[1]),
-							(self.del_t * self.vol[2])])
+		self.pos += np.dot(self.vol, self.del_t)
+
 		# Reset force profile
-		self.f = np.array([np.longdouble(0),
-						np.longdouble(0),
-						np.longdouble(0)])
+		self.force = np.zeros(3, dtype=np.longdouble)
 
 	def VV_update(self):
 		"""Parameters:
@@ -84,7 +75,7 @@ class Craft(object):
 		self.hist[2].append(self.pos[2])
 
 
-class CelestialBody:
+class CelestialBody(object):
 
 	def __init__(self, mass, position=None):
 		if not os.path.isfile('de430.bsp'):
@@ -98,44 +89,42 @@ class CelestialBody:
 		else:
 			self.pos = []
 
-	def getPos(self, time):
+	def get_position(self, time):
 		"""Returns the position relative to the solar system barycentere"""
 		return self.kernel[3, self.KERNAL_CONSTANT].compute(time)
 
-
-	def log(self):
+	def log_position(self):
 		"""log current position"""
 		self.hist[0].append(self.pos[0])
 		self.hist[1].append(self.pos[1])
 		self.hist[2].append(self.pos[2])
 
-class Earth(CelestialBody, object):
+
+class Earth(CelestialBody):
 
 	KERNAL_CONSTANT = 399
 
 	def __init__(self):
 		super(Earth, self).__init__(5.9721986 * 10**24)
 
-
-	def getRelPos(self, time):
+	def update_rel_position(self, time):
 		"""Returns relitive position of the earth (which is the origin
 		in an earth moon system)"""
 
-		location = np.longdouble(0)
-		self.pos = np.array([location, location, location])
+		self.pos = np.zeros(3, dtype=np.longdouble)
 		return self.pos
 
 
-class Moon(CelestialBody, object):
+class Moon(CelestialBody):
 
 	KERNAL_CONSTANT = 301
 
 	def __init__(self):
 		super(Moon, self).__init__(7.34767309 * 10**22)
 
-	def getRelPos(self, time):
+	def update_rel_position(self, time):
 		"""Returns relitive position of the moon (relative to the earth)"""
-		self.pos = self.getPos(time) - self.kernel[3, 399].compute(time)
+		self.pos = self.get_position(time) - self.kernel[3, 399].compute(time)
 		return np.array([np.longdouble(self.pos[0]),
-						 np.longdouble(self.pos[1]),
-						 np.longdouble(self.pos[2])])
+						np.longdouble(self.pos[1]),
+						np.longdouble(self.pos[2])])

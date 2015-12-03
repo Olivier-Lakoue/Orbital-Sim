@@ -2,6 +2,8 @@ import time as t
 import math
 import sys
 
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 from astropy.time import Time
 import numpy as np
 
@@ -25,8 +27,6 @@ def drawSphere(xCenter, yCenter, zCenter, r):
 
 def plot(ship, planets):
 	"""3d plots earth/moon/ship interaction"""
-	import matplotlib.pyplot as plt
-	from mpl_toolkits.mplot3d import Axes3D
 	# Initilize plot
 	fig = plt.figure()
 	ax = fig.add_subplot(111, projection='3d')
@@ -44,9 +44,9 @@ def plot(ship, planets):
 
 	# Plot planet trajectory
 	for planet in planets:
-		ax.plot(xs=moon.hist[0],
-				ys=moon.hist[1],
-				zs=moon.hist[2],
+		ax.plot(xs=planet.hist[0],
+				ys=planet.hist[1],
+				zs=planet.hist[2],
 				zdir='z', label='ys=0, zdir=z')
 
 	# Plot Earth (plot is moon position relative to earth)
@@ -57,30 +57,33 @@ def plot(ship, planets):
 	plt.show()
 
 
-def sim(startTime, endTime, step, ship, planets):
+def run_simulation(start_time, end_time, step, ship, planets):
 	"""Runs orbital simulation given ship and planet objects
 	as well as start/stop times"""
 
 	# Caculate moon planet update rate (1/10th as often as the craft)
-	plan_step = int(math.ceil(((endTime - startTime) / step) / 100))
+	plan_step = int(math.ceil(((end_time - start_time) / step) / 100))
 
 	# Initilize positions of planets
 	for planet in planets:
-				planet.getRelPos(startTime)
-				planet.log()
+				planet.update_rel_position(start_time)
+				planet.log_position()
+
+	print"Starting: {:6.2f} days of simulation".format(end_time - start_time)
 
 	start = t.time()
-	for i, time in enumerate(np.arange(startTime, endTime, step)):
+	for i, time in enumerate(np.arange(start_time, end_time, step)):
 		# Every plan_step update the position estmation
 		if (i % plan_step == 0):
 			for planet in planets:
-				planet.getRelPos(time)
-				planet.log()
+				planet.update_rel_position(time)
+				planet.log_position()
 
-		# Update craft_vol
+		# Update craft velocity and force vectors related to planets
 		for planet in planets:
-			ship.force_g(planet.mass, planet.pos[0],
-						planet.pos[1], planet.pos[2])
+			ship.force_g(planet)
+
+		# Update ship position according to sum of affecting forces
 		ship.update()
 
 		# Log the position of the ship every 1000 steps
@@ -92,22 +95,22 @@ def sim(startTime, endTime, step, ship, planets):
 		if (i % 100000) == 0:
 			if t.time() - start > 1:
 				print ("Days remaining: {0:.2f}, ({1:.2f}% left)"
-						.format((endTime - time),
-						((1 - ((time - startTime) /
-						(endTime - startTime))) * 100)))
+						.format((end_time - time),
+						((1 - ((time - start_time) /
+						(end_time - start_time))) * 100)))
 				# Caculate estmated time remaining
 				# Total tics
-				tot_tics = int((endTime - startTime) / step)
+				total_tics = int((end_time - start_time) / step)
 				# Tics per second till now
 				tics_s = int(math.ceil(i / (t.time() - start)))
 				# Estmated remaining seconds
-				sec_rem = (tot_tics - i) / tics_s
+				sec_rem = (total_tics - i) / tics_s
 				m, s = divmod(sec_rem, 60)
 				h, m = divmod(m, 60)
 				print ("Tics per second: {0} est time remaining: {1:0>2}:{2:0>2}:{3:0>2}"
 				.format(tics_s, h, m, s))
 	print ("Total Tics per second: {0:.2f}"
-	.format(((endTime - startTime) / step) / (t.time() - start)))
+	.format(((end_time - start_time) / step) / (t.time() - start)))
 	tot_s = t.time() - start
 	m, s = divmod(tot_s, 60)
 	h, m = divmod(m, 60)
@@ -130,5 +133,6 @@ if __name__ == "__main__":
 
 	# Initilize start date/time (Julian)
 	time = start_time.jd
-	sim(start_time.jd, end_time.jd, del_t, ship, planets)
+	run_simulation(start_time.jd, end_time.jd, del_t, ship, planets)
+
 	plot(ship, [moon])
