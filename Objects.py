@@ -5,19 +5,27 @@ import os
 
 
 class Craft(object):
+	# Gravitational constant (6.67408*10-11 N*(m/kg)2)
+	GRAVITATIONAL_CONSTANT = 6.67408 * 10**-11
+
 	def __init__(self, delt_t, x=0.0, y=0.0, z=0.0,
 				v_x=0.0, v_y=0.0, v_z=0.0, mass=0):
-		# Pos is in km
+		"""Units:
+		Position: km
+		Volume: km/s
+		Mass: kg
+		Delta_t: days
+		"""
 		self.pos = np.array([np.longdouble(x),
 							np.longdouble(y),
 							np.longdouble(z)])
-		# Vol is in km/s
+
 		self.vol = np.array([np.longdouble(v_x),
 							np.longdouble(v_y),
 							np.longdouble(v_z)])
-		# Mass is in kg
+
 		self.mass = mass
-		# Delta_t is in days
+
 		self.del_t = np.longdouble(delt_t) * 86400
 
 		# Initilize non input vars
@@ -28,10 +36,8 @@ class Craft(object):
 		# Initilize force array
 		self.force = np.zeros(3, dtype=np.longdouble)
 		# Initilize constants
-		# Gravitational constant (6.67408*10-11 N*(m/kg)2)
-		self.g_const = 6.67408 * 10**-11
 		self.VELOCITY_FACTOR = self.del_t / self.mass / 1000
-		self.FORCE_FACTOR = self.g_const * self.mass / 1000000
+		self.FORCE_FACTOR = self.GRAVITATIONAL_CONSTANT * self.mass / 1000000
 
 	def force_g(self, body):
 		"""Updates the force the body has on this craft."""

@@ -51,7 +51,7 @@ def plot(ship, planets):
 
 	# Plot Earth (plot is moon position relative to earth)
 	# also plotting to scale
-	(xs, ys, zs) = drawSphere(0, 0, 0, 6367.4447)
+	xs, ys, zs = drawSphere(0, 0, 0, 6367.4447)
 	ax.plot_wireframe(xs, ys, zs, color="r")
 
 	plt.show()
